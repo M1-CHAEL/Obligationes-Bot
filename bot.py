@@ -139,14 +139,5 @@ async def affirm(ctx):
 async def deny(ctx):
     await process_response(ctx, False)
 
-@bot.command()
-async def test_truth(ctx):
-    samples = [make_statement() for _ in range(5)]
-    output = "Truth Test Samples:\n"
-    for s in samples:
-        truth = determine_truth_value(s)
-        output += f"Statement: '{s['text']}' => Intended: {'True (affirm)' if truth else 'False (deny)'}\n"
-    await ctx.send(output)
-
 # Run the bot (replace YOUR_BOT_TOKEN with your actual token)
 bot.run(os.getenv("DISCORD_BOT_TOKEN"))
