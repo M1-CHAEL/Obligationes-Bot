@@ -53,7 +53,10 @@ def make_statement():
         "quant": quant,
         "verb": verb
     }
+##########################################################################################################################################################################
 ### (This needs to be expanded to include first order logic principals of scholasticism) ###
+### (Plus the logic is terrible. I've been thinking about using the original z3 instead. Right now it's barely doing basic axioms correctly. This needs a lot of work) ###
+##########################################################################################################################################################################
 def determine_truth_value(statement_data):
     noun1 = statement_data["noun1"]
     noun2 = statement_data["noun2"]
