@@ -11,9 +11,10 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # -------------------------------
-# Ontology: Define our nouns with richer properties.
-# Each noun is mapped to a dictionary with keys "category" and "subtype".
-### (This needs to be expanded on and confirmed with to scholasticism) ###
+# Ontology: Define nouns and their properties
+# Each noun maps to a dictionary with "category" and "subtype".
+# TODO: Expand this and align with scholastic principles.
+# -------------------------------
 ontology = {
     "dogs": {"category": "animal", "subtype": "mammal"},
     "cats": {"category": "animal", "subtype": "mammal"},
@@ -25,26 +26,35 @@ ontology = {
     "ideas": {"category": "abstract", "subtype": "concept"}
 }
 
-# Data: sample nouns, quantifiers, and verbs.
-### (This also needs to be expanded on as additional truth values are added) ####
+# -------------------------------
+# Vocabulary Data
+# TODO: Expand this as additional logic layers are implemented.
+# -------------------------------
 nouns = list(ontology.keys())
 quantifiers = ["All", "No", "Some"]
 verbs = ["are", "are not"]
 
-# Global game state per channel.
+# -------------------------------
+# Game Sessions (per Discord channel)
+# -------------------------------
 game_sessions = {}
 
 # -------------------------------
-# Helper functions
+# Helper Functions
 # -------------------------------
+
 def make_statement():
+    """
+    Create a randomized logical statement from the defined vocabulary.
+    """
     quant = random.choice(quantifiers)
     verb = random.choice(verbs)
     noun1 = random.choice(nouns)
     noun2 = random.choice(nouns)
-    # Ensure the two nouns are different.
+
     while noun2 == noun1:
         noun2 = random.choice(nouns)
+
     text = f"{quant} {noun1} {verb} {noun2}."
     return {
         "text": text,
@@ -53,73 +63,85 @@ def make_statement():
         "quant": quant,
         "verb": verb
     }
-##########################################################################################################################################################################
-### (This needs to be expanded to include first order logic principals of scholasticism) ###
-### (Plus the logic is terrible. I've been thinking about using the original z3 instead. Right now it's barely doing basic axioms correctly. This needs a lot of work) ###
-##########################################################################################################################################################################
+
 def determine_truth_value(statement_data):
+    """
+    Basic (placeholder) logical evaluation based on ontology properties.
+    TODO:
+      - Expand to include first-order logic principles.
+      - Replace with formal logic engine (e.g., Z3).
+    """
     noun1 = statement_data["noun1"]
     noun2 = statement_data["noun2"]
     quant = statement_data["quant"]
     verb = statement_data["verb"]
-    
-    # Retrieve properties from the ontology.
+
     props1 = ontology[noun1]
     props2 = ontology[noun2]
     cat1, sub1 = props1["category"], props1["subtype"]
     cat2, sub2 = props2["category"], props2["subtype"]
-    
+
     if quant == "All":
         if verb == "are":
-            # "All X are Y" is true if X is a subset of Y.
-            # Here, we assume that holds only if both category and subtype match.
+            # True if noun1 is a subset of noun2 (same category + subtype)
             return (cat1 == cat2) and (sub1 == sub2)
         else:
-            # "All X are not Y" is true if X and Y are completely disjoint,
-            # i.e. they have different categories.
+            # True if categories are completely disjoint
             return cat1 != cat2
+
     elif quant == "No":
-        # "No X are Y" is equivalent to "All X are not Y".
+        # Equivalent to "All X are not Y"
         return cat1 != cat2
+
     elif quant == "Some":
         if verb == "are":
-            # "Some X are Y" is true if there is some intersection.
-            # We'll consider this true if X and Y share at least the same category.
+            # True if they share the same category
             return cat1 == cat2
         else:
-            # "Some X are not Y": true if either they are in different categories or,
-            # if same category, their subtypes differ (i.e. not all X are Y).
-            if cat1 != cat2:
-                return True
-            else:
-                return sub1 != sub2
+            # True if different categories or different subtypes within same category
+            return cat1 != cat2 or sub1 != sub2
+
     return False
 
 # -------------------------------
 # Discord Bot Game Logic
 # -------------------------------
+
 @bot.command()
 async def start(ctx):
+    """
+    Starts a new game session for the channel.
+    """
     if ctx.channel.id in game_sessions:
         await ctx.send("A game is already in progress in this channel!")
         return
+
     statement_data = make_statement()
     intended = determine_truth_value(statement_data)
     statement_data["intended"] = intended
+
     game_sessions[ctx.channel.id] = {
         "statement": statement_data,
         "score": 0
     }
+
     intended_str = "affirm" if intended else "deny"
-    await ctx.send(f"{ctx.author.mention}, the positor says: '{statement_data['text']}'\nDo you !affirm or !deny this statement? (Intended answer: {intended_str})")
+    await ctx.send(
+        f"{ctx.author.mention}, the positor says: '{statement_data['text']}'\n"
+        f"Do you !affirm or !deny this statement? (Intended answer: {intended_str})"
+    )
 
 async def process_response(ctx, answer_bool):
+    """
+    Process the user's answer (!affirm or !deny).
+    """
     if ctx.channel.id not in game_sessions:
         await ctx.send("No active game in this channel.")
         return
+
     session = game_sessions[ctx.channel.id]
     statement_data = session["statement"]
-    
+
     if answer_bool == statement_data["intended"]:
         session["score"] += 1
         await ctx.send(f"{ctx.author.mention}, your response is correct. Current score: {session['score']}.")
@@ -127,20 +149,33 @@ async def process_response(ctx, answer_bool):
         await ctx.send(f"{ctx.author.mention}, your response is incorrect. You lose!")
         del game_sessions[ctx.channel.id]
         return
-    
+
     new_statement = make_statement()
     new_statement["intended"] = determine_truth_value(new_statement)
     session["statement"] = new_statement
     intended_str = "affirm" if new_statement["intended"] else "deny"
-    await ctx.send(f"Next statement: '{new_statement['text']}'\nDo you !affirm or !deny? (Intended answer: {intended_str})")
+
+    await ctx.send(
+        f"Next statement: '{new_statement['text']}'\n"
+        f"Do you !affirm or !deny? (Intended answer: {intended_str})"
+    )
 
 @bot.command()
 async def affirm(ctx):
+    """
+    User affirms the given statement.
+    """
     await process_response(ctx, True)
 
 @bot.command()
 async def deny(ctx):
+    """
+    User denies the given statement.
+    """
     await process_response(ctx, False)
 
-# Run the bot (replace YOUR_BOT_TOKEN with your actual token)
+# -------------------------------
+# Run the bot (uses environment variable for token)
+# -------------------------------
 bot.run(os.getenv("DISCORD_BOT_TOKEN"))
+
